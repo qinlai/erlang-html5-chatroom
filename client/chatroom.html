@@ -1,0 +1,84 @@
+<!--
+%%desc 一个聊天室demo，用来测试html5 websocket 和 erlang 的通信
+%%@auth tissot.cai@gmail.com
+%%@date 2013-09-28
+-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns='http://www.w3.org/1999/xhtml'>
+<head>
+  <title>html5聊天室</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  
+  <style type="text/css">
+  #msg{border:1px solid #000000; width:800px; height:400px; overflow:scroll;}
+  </style>
+
+<script type="text/javascript">
+var ws;
+function init() {
+    var host;
+    host = 'ws://192.168.7.21:9000/chatroom';
+
+    ws = new WebSocket(host);
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = function(e){on_opne(e)};
+    ws.onmessage = function(e){on_message(e)};
+    ws.onclose = function(e){on_close(e)};
+}
+
+function on_opne (e) {
+    show("connect success!<br>");
+    document.getElementById("msgbox").focus();
+}
+
+function on_message(e) {
+    var binary, d = '';
+    binary = new Uint8Array(e.data);
+
+    for (var i = 0; i < binary.length; i++) {
+        d += String.fromCharCode(binary[i]);
+    }
+
+    if (binary.length > 0) {
+        show('<span style="color:green">' + decodeURI(escape(d)) + '</span>');
+    }
+}
+
+function on_close (e) {
+    show("closed.");
+}
+
+function show(data) {
+    document.getElementById("msg").innerHTML = document.getElementById("msg").innerHTML + '</br>' + data;
+}
+
+function send_msg() {
+    var msgbox;
+    msgbox = document.getElementById("msgbox");
+    msg = msgbox.value;
+
+    if (msg != "") {
+        ws.send(msg);
+        msgbox.value = "";
+        msgbox.focus();
+        show('<font color="red">' + msg + '</font>');
+    }
+}
+
+function on_key_press(e) {
+    if (e.keyCode == 13) {
+        send_msg();
+    }
+}
+
+</script>
+
+<body onload="init();">
+<div id="msg"></div>
+<input type="txtbox" id="msgbox" size="100" onkeypress="on_key_press(event);" />
+<input type="button" value="发 送" onclick="send_msg();" />
+</body>
+</head>
+
+</html>
