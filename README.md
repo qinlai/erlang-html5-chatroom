@@ -7,6 +7,7 @@ erlang-html5-chatroom
 
 编译:
 cd server
+
 erlc *.erl
 
 运行:
