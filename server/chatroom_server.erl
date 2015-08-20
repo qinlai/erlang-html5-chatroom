@@ -3,13 +3,14 @@
 %%@date 2013-09-28
 
 -module(chatroom_server).
+-include("inc.hrl").
 
 -export([start/0, start/1]).
 
 -export([
     loop_listen/1,
     loop_server/0,
-    loop_client/1,
+    loop_client/2,
     handle_client/1
 ]).
 
@@ -56,28 +57,42 @@ loop_listen (Listen) ->
 
 
 handle_client (Socket) ->
-    receive 
+    receive
         {tcp, Socket, Data} ->
             SecData = html5:get_seccure_data(Data),
             gen_tcp:send(Socket, SecData),
             ?SERVER_PROC ! {new_client, self()},
-            loop_client(Socket);
+            loop_client(Socket, #buff{});
         UnKnowMsg ->
             exit(UnKnowMsg)
     end.
 
-loop_client (Socket) ->
+
+loop_client (Socket, Buff) ->
     receive
         {tcp, Socket, Data} ->
-            RecData = html5:unpack_data(Data),
-            SendData = html5:pack_data(RecData),
-            ?SERVER_PROC ! {new_msg, self(), SendData},
-            loop_client(Socket);
+            NewBuff = html5:unpack_data(Data, Buff),
+            if
+                (NewBuff #buff.opcode == 1) or (NewBuff #buff.opcode == 2) ->
+                   if
+                        NewBuff #buff.is_end ->
+                            SendData = html5:pack_data(NewBuff #buff.payload_data),
+                            ?SERVER_PROC ! {new_msg, self(), SendData},
+                            loop_client(Socket, #buff{});
+                        true ->
+                            loop_client(Socket, NewBuff)
+                    end;
+                true ->
+                    loop_client(Socket, Buff)
+            end;
+
         {tcp_closed, Socket} ->
             ?SERVER_PROC ! {close_client, self()};
         {send, Data} ->
             gen_tcp:send(Socket, Data),
-            loop_client(Socket);
+            loop_client(Socket, Buff);
         UnKnowMsg ->
             exit(UnKnowMsg)
     end.
+
+
